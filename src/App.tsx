@@ -28,6 +28,7 @@ export default function App() {
     phone: "",
     postcode: "",
     quoteInterest: "",
+    consent: false,
     contactTime: "morning",
     note: ""
   });
@@ -39,21 +40,19 @@ export default function App() {
   const [isSecondSubmitted, setIsSecondSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const isQuoteRequested = formData.quoteInterest === 'yes' || formData.quoteInterest === 'maybe';
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
     // Conditional validation
     const newErrors: Record<string, string> = {};
     
-    if (!formData.quoteInterest) {
-      newErrors.quoteInterest = "Please let us know if you'd like a quote";
-    }
+    const interest = formData.consent ? 'yes' : 'no';
 
-    if (isQuoteRequested) {
-      if (!formData.phone) newErrors.phone = "Phone number is required for a quote";
-      if (!formData.postcode) newErrors.postcode = "Postcode is required for a quote";
+    if (formData.phone) {
+      const digits = formData.phone.replace(/\D/g, '');
+      if (digits.length < 10) {
+        newErrors.phone = "Please enter a valid UK phone number (min 10 digits)";
+      }
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -72,8 +71,7 @@ export default function App() {
         },
         body: JSON.stringify({
           ...formData,
-          // Ensure quoteInterest is explicitly yes, no, or maybe as requested
-          quoteInterest: formData.quoteInterest,
+          quoteInterest: interest,
           source: "Solar Guide UK Landing Page",
           timestamp: new Date().toISOString()
         }),
@@ -87,10 +85,11 @@ export default function App() {
       if (typeof window !== 'undefined' && (window as any).fbq) {
         (window as any).fbq('track', 'Lead', {
           content_name: 'Solar Guide UK PDF',
-          status: formData.quoteInterest
+          status: interest
         });
       }
 
+      setFormData(prev => ({ ...prev, quoteInterest: interest }));
       setIsSubmitted(true);
       setErrors({});
     } catch (error) {
@@ -104,8 +103,19 @@ export default function App() {
   const handleSecondSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
+    const newErrors: Record<string, string> = {};
+
     if (!formData.phone) {
-      setErrors({ phone: "Phone number is required for a quote" });
+      newErrors.phone = "Phone number is required for a quote";
+    } else {
+      const digits = formData.phone.replace(/\D/g, '');
+      if (digits.length < 10) {
+        newErrors.phone = "Please enter a valid UK phone number (min 10 digits)";
+      }
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -366,7 +376,95 @@ export default function App() {
                           Downloading now... Check your browser downloads.
                         </div>
 
-                        {formData.quoteInterest === 'no' && !isSecondSubmitted ? (
+                        {formData.quoteInterest === 'yes' && !isSecondSubmitted ? (
+                          <div className="bg-white border-2 border-brand-green p-8 rounded-[2rem] shadow-xl space-y-6 text-left relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-green/5 rounded-full -mr-16 -mt-16"></div>
+                            <h4 className="text-xl font-bold text-brand-blue leading-tight relative z-10">
+                              Almost there! Just one more detail...
+                            </h4>
+                            <p className="text-sm text-slate-600 relative z-10">
+                              {formData.phone 
+                                ? "To give you an accurate suitability check, we just need your postcode."
+                                : "To give you an accurate suitability check, we just need your phone number and postcode."}
+                            </p>
+                            
+                            <form onSubmit={handleSecondSubmit} className="space-y-5 relative z-10">
+                              {!formData.phone && (
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <Phone className="w-3.5 h-3.5 text-brand-green" />
+                                    Phone Number *
+                                  </label>
+                                  <input 
+                                    required
+                                    type="tel"
+                                    placeholder="07123 456789"
+                                    className={`w-full px-5 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all placeholder:text-slate-300 ${errors.phone ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
+                                    value={formData.phone}
+                                    onChange={(e) => {
+                                      setFormData({...formData, phone: e.target.value});
+                                      if (errors.phone) setErrors({});
+                                    }}
+                                  />
+                                  {errors.phone && <p className="text-[10px] text-red-500 font-bold">{errors.phone}</p>}
+                                </div>
+                              )}
+
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                  <MapPin className="w-3.5 h-3.5 text-brand-green" />
+                                  Postcode (Optional)
+                                </label>
+                                <input 
+                                  type="text"
+                                  placeholder="SW1A 1AA"
+                                  className={`w-full px-5 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all ${errors.postcode ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
+                                  value={formData.postcode}
+                                  onChange={(e) => {
+                                    setFormData({...formData, postcode: e.target.value});
+                                    if (errors.postcode) setErrors({});
+                                  }}
+                                />
+                                {errors.postcode && <p className="text-[10px] text-red-500 font-bold">{errors.postcode}</p>}
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                  <Clock className="w-3.5 h-3.5" />
+                                  Best time to contact
+                                </label>
+                                <div className="grid grid-cols-3 gap-3">
+                                  {['Morning', 'Afternoon', 'Evening'].map((time) => (
+                                    <button
+                                      key={time}
+                                      type="button"
+                                      onClick={() => setFormData({...formData, contactTime: time.toLowerCase()})}
+                                      className={`py-3 text-xs font-bold rounded-xl border transition-all ${formData.contactTime === time.toLowerCase() ? 'bg-brand-blue text-white border-brand-blue' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
+                                    >
+                                      {time}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <button 
+                                type="submit"
+                                disabled={isSecondSubmitting}
+                                className="w-full bg-brand-green hover:bg-brand-green-hover text-white font-bold py-5 rounded-xl shadow-lg shadow-brand-green/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50 group"
+                              >
+                                {isSecondSubmitting ? (
+                                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                  <>
+                                    Complete My Request
+                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                  </>
+                                )}
+                              </button>
+                              {errors.secondSubmit && <p className="text-center text-xs text-red-500 font-bold">{errors.secondSubmit}</p>}
+                            </form>
+                          </div>
+                        ) : formData.quoteInterest === 'no' && !isSecondSubmitted ? (
                           <div className="bg-white border-2 border-brand-green p-8 rounded-[2rem] shadow-xl space-y-6 text-left relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-brand-green/5 rounded-full -mr-16 -mt-16"></div>
                             <h4 className="text-xl font-bold text-brand-blue leading-tight relative z-10">
@@ -378,35 +476,21 @@ export default function App() {
                             
                             <form onSubmit={handleSecondSubmit} className="space-y-5 relative z-10">
                               <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Your Name</label>
-                                <div className="relative">
-                                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
-                                  <input 
-                                    required
-                                    type="text"
-                                    className="w-full pl-12 pr-4 py-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-brand-green outline-none transition-all"
-                                    value={formData.firstName}
-                                    onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                                  />
-                                </div>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Phone Number *</label>
-                                <div className="relative">
-                                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
-                                  <input 
-                                    required
-                                    type="tel"
-                                    placeholder="07123 456789"
-                                    className={`w-full pl-12 pr-4 py-4 rounded-xl border focus:ring-2 focus:ring-brand-green outline-none transition-all ${errors.phone ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
-                                    value={formData.phone}
-                                    onChange={(e) => {
-                                      setFormData({...formData, phone: e.target.value});
-                                      if (errors.phone) setErrors({});
-                                    }}
-                                  />
-                                </div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                  <Phone className="w-3.5 h-3.5 text-brand-green" />
+                                  Phone Number *
+                                </label>
+                                <input 
+                                  required
+                                  type="tel"
+                                  placeholder="07123 456789"
+                                  className={`w-full px-5 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all placeholder:text-slate-300 ${errors.phone ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
+                                  value={formData.phone}
+                                  onChange={(e) => {
+                                    setFormData({...formData, phone: e.target.value});
+                                    if (errors.phone) setErrors({});
+                                  }}
+                                />
                                 {errors.phone && <p className="text-[10px] text-red-500 font-bold">{errors.phone}</p>}
                               </div>
 
@@ -496,6 +580,24 @@ export default function App() {
                       </div>
                     </div>
 
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5" />
+                        Phone Number
+                      </label>
+                      <input 
+                        type="tel"
+                        placeholder="07123 456789"
+                        className={`w-full px-5 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all placeholder:text-slate-300 ${errors.phone ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
+                        value={formData.phone}
+                        onChange={(e) => {
+                          setFormData({...formData, phone: e.target.value});
+                          if (errors.phone) setErrors({});
+                        }}
+                      />
+                      {errors.phone && <p className="text-[10px] text-red-500 font-bold">{errors.phone}</p>}
+                    </div>
+
                     <div className="p-5 bg-brand-green/5 rounded-2xl border border-brand-green/10 space-y-4">
                       <div className="flex items-start gap-3">
                         <div className="bg-brand-green p-1 rounded-lg mt-0.5">
@@ -506,113 +608,16 @@ export default function App() {
                         </p>
                       </div>
 
-                      <div className="space-y-3">
-                        <p className="text-sm font-bold text-brand-blue">Would you also like a free solar suitability check for your home?</p>
-                        <div className="space-y-2">
-                          {[
-                            { id: "yes", label: "Yes — check my home for solar suitability" },
-                            { id: "maybe", label: "Send the guide first — I may want a quote after" },
-                            { id: "no", label: "Just send the guide" }
-                          ].map((option) => (
-                            <label key={option.id} className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${formData.quoteInterest === option.id ? 'bg-white border-brand-green shadow-md shadow-brand-green/5' : 'bg-white/50 border-slate-100 hover:border-slate-200'} ${errors.quoteInterest ? 'border-red-500 bg-red-50' : ''}`}>
-                              <input 
-                                type="radio" 
-                                name="quoteInterest"
-                                className="w-5 h-5 accent-brand-green"
-                                checked={formData.quoteInterest === option.id}
-                                onChange={() => {
-                                  setFormData({...formData, quoteInterest: option.id});
-                                  setErrors({});
-                                }}
-                              />
-                              <span className={`text-sm font-bold ${formData.quoteInterest === option.id ? 'text-brand-blue' : 'text-slate-500'}`}>{option.label}</span>
-                            </label>
-                          ))}
-                          {errors.quoteInterest && <p className="text-[10px] text-red-500 font-bold">{errors.quoteInterest}</p>}
-                        </div>
-                      </div>
+                      <label className="flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all bg-white border-slate-100 hover:border-slate-200">
+                        <input 
+                          type="checkbox" 
+                          className="w-5 h-5 accent-brand-green"
+                          checked={formData.consent}
+                          onChange={(e) => setFormData({...formData, consent: e.target.checked})}
+                        />
+                        <span className="text-sm font-bold text-brand-blue">I consent to being contacted for a free solar quote</span>
+                      </label>
                     </div>
-
-                    <AnimatePresence>
-                      {isQuoteRequested && (
-                        <motion.div 
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="space-y-5 pt-2 overflow-hidden"
-                        >
-                          <div className="grid sm:grid-cols-2 gap-5">
-                            <div className="space-y-2">
-                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                <Phone className="w-3.5 h-3.5 text-brand-green" />
-                                Phone *
-                              </label>
-                              <input 
-                                required={isQuoteRequested}
-                                type="tel"
-                                placeholder="07123 456789"
-                                className={`w-full px-5 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all ${errors.phone ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
-                                value={formData.phone}
-                                onChange={(e) => {
-                                  setFormData({...formData, phone: e.target.value});
-                                  if (errors.phone) setErrors({...errors, phone: ""});
-                                }}
-                              />
-                              {errors.phone && <p className="text-[10px] text-red-500 font-bold">{errors.phone}</p>}
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                <MapPin className="w-3.5 h-3.5 text-brand-green" />
-                                Postcode *
-                              </label>
-                              <input 
-                                required={isQuoteRequested}
-                                type="text"
-                                placeholder="SW1A 1AA"
-                                className={`w-full px-5 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all ${errors.postcode ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
-                                value={formData.postcode}
-                                onChange={(e) => {
-                                  setFormData({...formData, postcode: e.target.value});
-                                  if (errors.postcode) setErrors({...errors, postcode: ""});
-                                }}
-                              />
-                              {errors.postcode && <p className="text-[10px] text-red-500 font-bold">{errors.postcode}</p>}
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                              <Clock className="w-3.5 h-3.5" />
-                              Best time to contact
-                            </label>
-                            <div className="grid grid-cols-3 gap-3">
-                              {['Morning', 'Afternoon', 'Evening'].map((time) => (
-                                <button
-                                  key={time}
-                                  type="button"
-                                  onClick={() => setFormData({...formData, contactTime: time.toLowerCase()})}
-                                  className={`py-3 text-xs font-bold rounded-xl border transition-all ${formData.contactTime === time.toLowerCase() ? 'bg-brand-blue text-white border-brand-blue' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
-                                >
-                                  {time}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                              <MessageSquare className="w-3.5 h-3.5" />
-                              Anything you’d like us to know?
-                            </label>
-                            <textarea 
-                              placeholder="e.g. I have a south-facing roof..."
-                              className="w-full px-5 py-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all h-24 resize-none placeholder:text-slate-300"
-                              value={formData.note}
-                              onChange={(e) => setFormData({...formData, note: e.target.value})}
-                            />
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
 
                     <div className="pt-4 space-y-4">
                       {errors.submit && (
@@ -632,7 +637,7 @@ export default function App() {
                           </>
                         ) : (
                           <>
-                            {formData.quoteInterest === 'yes' ? 'Get My Guide + Free Solar Check' : 'Get My Free Guide'}
+                            {formData.consent ? 'Get My Guide + Free Solar Check' : 'Get My Free Guide'}
                             <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                           </>
                         )}
