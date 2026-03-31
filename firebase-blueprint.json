@@ -1,0 +1,22 @@
+{
+  "entities": {
+    "Stat": {
+      "title": "Stat",
+      "description": "Global statistics for the application",
+      "type": "object",
+      "properties": {
+        "submissionCount": {
+          "type": "integer",
+          "description": "Total number of form submissions"
+        }
+      },
+      "required": ["submissionCount"]
+    }
+  },
+  "firestore": {
+    "/stats/global": {
+      "schema": "Stat",
+      "description": "Global statistics document"
+    }
+  }
+}

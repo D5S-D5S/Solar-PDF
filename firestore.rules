@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: stats
+    // Document ID: global
+    // Fields:
+    //   - submissionCount: number (required, >= 0) - Total submissions
+    //
+    // ===============================================================
+
+    match /stats/global {
+      // Allow anyone to read the global stats
+      allow read: if true;
+      
+      // Allow anyone to update the submission count
+      // We validate that only submissionCount is updated and it's a number
+      allow update: if request.resource.data.keys().hasOnly(['submissionCount'])
+                    && request.resource.data.submissionCount is number
+                    && request.resource.data.submissionCount >= 0;
+      
+      // Allow initial creation if it doesn't exist
+      allow create: if request.resource.data.keys().hasOnly(['submissionCount'])
+                    && request.resource.data.submissionCount is number
+                    && request.resource.data.submissionCount >= 0;
+    }
+  }
+}

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { 
   CheckCircle2, 
   FileText, 
@@ -17,9 +17,12 @@ import {
   Phone, 
   MapPin, 
   Clock, 
-  MessageSquare 
+  MessageSquare,
+  Users
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { doc, getDoc, setDoc, updateDoc, increment, onSnapshot } from "firebase/firestore";
+import { db } from "./firebase";
 
 export default function App() {
   const [formData, setFormData] = useState({
@@ -39,6 +42,36 @@ export default function App() {
   const [isSecondSubmitting, setIsSecondSubmitting] = useState(false);
   const [isSecondSubmitted, setIsSecondSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submissionCount, setSubmissionCount] = useState<number | null>(null);
+
+  // Fetch and listen to submission count
+  useEffect(() => {
+    const statsDoc = doc(db, "stats", "global");
+    
+    const unsubscribe = onSnapshot(statsDoc, (snapshot) => {
+      if (snapshot.exists()) {
+        setSubmissionCount(snapshot.data().submissionCount);
+      } else {
+        // Initialize if it doesn't exist
+        setDoc(statsDoc, { submissionCount: 0 });
+      }
+    }, (error) => {
+      console.error("Error fetching stats:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const incrementCount = async () => {
+    try {
+      const statsDoc = doc(db, "stats", "global");
+      await updateDoc(statsDoc, {
+        submissionCount: increment(1)
+      });
+    } catch (error) {
+      console.error("Error incrementing count:", error);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -80,6 +113,9 @@ export default function App() {
       if (!response.ok) {
         throw new Error("Failed to submit lead");
       }
+
+      // Increment submission count in Firebase
+      await incrementCount();
 
       // Track Lead event with Meta Pixel
       if (typeof window !== 'undefined' && (window as any).fbq) {
@@ -138,6 +174,9 @@ export default function App() {
       if (!response.ok) {
         throw new Error("Failed to submit upsell");
       }
+
+      // Increment submission count in Firebase for the second action
+      await incrementCount();
 
       // Track Lead event again for the upsell
       if (typeof window !== 'undefined' && (window as any).fbq) {
@@ -205,6 +244,12 @@ export default function App() {
             <span className="font-bold text-xl tracking-tight">SolarGuide<span className="text-brand-green">UK</span></span>
           </div>
           <div className="hidden sm:flex items-center gap-6">
+            {submissionCount !== null && (
+              <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full border border-slate-100">
+                <Users className="w-3.5 h-3.5 text-brand-green" />
+                <span className="text-xs font-bold text-slate-600">{submissionCount.toLocaleString()} forms completed</span>
+              </div>
+            )}
             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Trusted by 10,000+ UK Homeowners</span>
           </div>
         </div>
@@ -734,6 +779,12 @@ export default function App() {
               <p className="text-slate-500 max-w-sm leading-relaxed">
                 Helping UK homeowners navigate the solar landscape with confidence. Our mission is to provide clear, unbiased information to help you save money and the planet.
               </p>
+              {submissionCount !== null && (
+                <div className="flex items-center gap-2 text-brand-green font-bold text-sm">
+                  <Users className="w-4 h-4" />
+                  <span>{submissionCount.toLocaleString()} forms completed to date</span>
+                </div>
+              )}
             </div>
             <div className="space-y-4">
               <h4 className="font-bold text-brand-blue uppercase tracking-widest text-xs">Resources</h4>
