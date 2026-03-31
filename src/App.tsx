@@ -81,7 +81,9 @@ export default function App() {
     
     const interest = formData.consent ? 'yes' : 'no';
 
-    if (formData.phone) {
+    if (formData.consent && !formData.phone) {
+      newErrors.phone = "Phone number is required for a solar quote";
+    } else if (formData.phone) {
       const digits = formData.phone.replace(/\D/g, '');
       if (digits.length < 10) {
         newErrors.phone = "Please enter a valid UK phone number (min 10 digits)";
@@ -628,7 +630,7 @@ export default function App() {
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                         <Phone className="w-3.5 h-3.5" />
-                        Phone Number
+                        Phone Number {formData.consent && <span className="text-red-500">*</span>}
                       </label>
                       <input 
                         type="tel"
