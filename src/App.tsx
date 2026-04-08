@@ -81,8 +81,18 @@ export default function App() {
     
     const interest = formData.consent ? 'yes' : 'no';
 
-    if (formData.consent && !formData.phone) {
-      newErrors.phone = "Phone number is required for a solar quote";
+    if (formData.consent) {
+      if (!formData.phone) {
+        newErrors.phone = "Phone number is required for a solar quote";
+      } else {
+        const digits = formData.phone.replace(/\D/g, '');
+        if (digits.length < 10) {
+          newErrors.phone = "Please enter a valid UK phone number (min 10 digits)";
+        }
+      }
+      if (!formData.postcode) {
+        newErrors.postcode = "Postcode is required to check installer availability";
+      }
     } else if (formData.phone) {
       const digits = formData.phone.replace(/\D/g, '');
       if (digits.length < 10) {
@@ -150,6 +160,10 @@ export default function App() {
       if (digits.length < 10) {
         newErrors.phone = "Please enter a valid UK phone number (min 10 digits)";
       }
+    }
+
+    if (!formData.postcode) {
+      newErrors.postcode = "Postcode is required to check installer availability";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -430,9 +444,13 @@ export default function App() {
                               Almost there! Just one more detail...
                             </h4>
                             <p className="text-sm text-slate-600 relative z-10">
-                              {formData.phone 
-                                ? "To give you an accurate suitability check, we just need your postcode."
-                                : "To give you an accurate suitability check, we just need your phone number and postcode."}
+                              {(!formData.phone && !formData.postcode) 
+                                ? "To give you an accurate suitability check, we just need your phone number and postcode."
+                                : !formData.phone 
+                                  ? "To give you an accurate suitability check, we just need your phone number."
+                                  : !formData.postcode
+                                    ? "To give you an accurate suitability check, we just need your postcode."
+                                    : "To give you an accurate suitability check, please confirm your details."}
                             </p>
                             
                             <form onSubmit={handleSecondSubmit} className="space-y-5 relative z-10">
@@ -457,23 +475,26 @@ export default function App() {
                                 </div>
                               )}
 
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                  <MapPin className="w-3.5 h-3.5 text-brand-green" />
-                                  Postcode (Optional)
-                                </label>
-                                <input 
-                                  type="text"
-                                  placeholder="SW1A 1AA"
-                                  className={`w-full px-5 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all ${errors.postcode ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
-                                  value={formData.postcode}
-                                  onChange={(e) => {
-                                    setFormData({...formData, postcode: e.target.value});
-                                    if (errors.postcode) setErrors({});
-                                  }}
-                                />
-                                {errors.postcode && <p className="text-[10px] text-red-500 font-bold">{errors.postcode}</p>}
-                              </div>
+                              {!formData.postcode && (
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <MapPin className="w-3.5 h-3.5 text-brand-green" />
+                                    Postcode *
+                                  </label>
+                                  <input 
+                                    required
+                                    type="text"
+                                    placeholder="SW1A 1AA"
+                                    className={`w-full px-5 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all ${errors.postcode ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
+                                    value={formData.postcode}
+                                    onChange={(e) => {
+                                      setFormData({...formData, postcode: e.target.value});
+                                      if (errors.postcode) setErrors({});
+                                    }}
+                                  />
+                                  {errors.postcode && <p className="text-[10px] text-red-500 font-bold">{errors.postcode}</p>}
+                                </div>
+                              )}
 
                               <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -522,24 +543,47 @@ export default function App() {
                             </p>
                             
                             <form onSubmit={handleSecondSubmit} className="space-y-5 relative z-10">
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                  <Phone className="w-3.5 h-3.5 text-brand-green" />
-                                  Phone Number *
-                                </label>
-                                <input 
-                                  required
-                                  type="tel"
-                                  placeholder="07123 456789"
-                                  className={`w-full px-5 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all placeholder:text-slate-300 ${errors.phone ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
-                                  value={formData.phone}
-                                  onChange={(e) => {
-                                    setFormData({...formData, phone: e.target.value});
-                                    if (errors.phone) setErrors({});
-                                  }}
-                                />
-                                {errors.phone && <p className="text-[10px] text-red-500 font-bold">{errors.phone}</p>}
-                              </div>
+                              {!formData.phone && (
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <Phone className="w-3.5 h-3.5 text-brand-green" />
+                                    Phone Number *
+                                  </label>
+                                  <input 
+                                    required
+                                    type="tel"
+                                    placeholder="07123 456789"
+                                    className={`w-full px-5 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all placeholder:text-slate-300 ${errors.phone ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
+                                    value={formData.phone}
+                                    onChange={(e) => {
+                                      setFormData({...formData, phone: e.target.value});
+                                      if (errors.phone) setErrors({});
+                                    }}
+                                  />
+                                  {errors.phone && <p className="text-[10px] text-red-500 font-bold">{errors.phone}</p>}
+                                </div>
+                              )}
+
+                              {!formData.postcode && (
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <MapPin className="w-3.5 h-3.5 text-brand-green" />
+                                    Postcode *
+                                  </label>
+                                  <input 
+                                    required
+                                    type="text"
+                                    placeholder="SW1A 1AA"
+                                    className={`w-full px-5 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all ${errors.postcode ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
+                                    value={formData.postcode}
+                                    onChange={(e) => {
+                                      setFormData({...formData, postcode: e.target.value});
+                                      if (errors.postcode) setErrors({});
+                                    }}
+                                  />
+                                  {errors.postcode && <p className="text-[10px] text-red-500 font-bold">{errors.postcode}</p>}
+                                </div>
+                              )}
 
                               <button 
                                 type="submit"
@@ -644,6 +688,27 @@ export default function App() {
                       />
                       {errors.phone && <p className="text-[10px] text-red-500 font-bold">{errors.phone}</p>}
                     </div>
+
+                    {formData.consent && (
+                      <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                          <MapPin className="w-3.5 h-3.5 text-brand-green" />
+                          Postcode <span className="text-red-500">*</span>
+                        </label>
+                        <input 
+                          required
+                          type="text"
+                          placeholder="SW1A 1AA"
+                          className={`w-full px-5 py-4 rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all placeholder:text-slate-300 ${errors.postcode ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
+                          value={formData.postcode}
+                          onChange={(e) => {
+                            setFormData({...formData, postcode: e.target.value});
+                            if (errors.postcode) setErrors({});
+                          }}
+                        />
+                        {errors.postcode && <p className="text-[10px] text-red-500 font-bold">{errors.postcode}</p>}
+                      </div>
+                    )}
 
                     <div className="p-5 bg-brand-green/5 rounded-2xl border border-brand-green/10 space-y-4">
                       <div className="flex items-start gap-3">
